@@ -15,7 +15,7 @@ import { requireUser } from "~/session.server";
 import { currencyFormatter, parseDate } from "~/utils";
 import { createDeposit } from "~/models/deposit.server";
 import invariant from "tiny-invariant";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
 export async function loader({ request, params }: LoaderArgs) {
   await requireUser(request);
@@ -187,23 +187,33 @@ function Deposits() {
     }
   }
 
-  const errors = newDepositFetcher.data?.errors as
-    | UseDataFunctionReturn<typeof action>["errors"]
-    | undefined;
+  const errors: UseDataFunctionReturn<typeof action>["errors"] | undefined =
+    useMemo(
+      () => newDepositFetcher.data?.errors,
+      [newDepositFetcher.data?.errors],
+    );
+
+  const amountInputRef = useRef<HTMLInputElement | null>(null);
+  const despositDateInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     if (!formRef.current) return;
     if (newDepositFetcher.state !== "idle") return;
 
     // 🐨 If there's an error on the amount, focus the amount element
-
+    if (errors?.amount) {
+      return amountInputRef.current?.focus();
+    }
     // 🐨 If there's an error on the desposit date, focus the depositDate element
-
+    if (errors?.depositDate) {
+      return despositDateInputRef.current?.focus();
+    }
+    amountInputRef.current?.focus();
     // 🐨 Focus on the amount field
     // 💯 In what situation would we want to *not* change focus and *not* reset the form at this point?
 
     formRef.current.reset();
-  }, [newDepositFetcher.state]);
+  }, [newDepositFetcher.state, errors]);
 
   return (
     <div>
@@ -241,6 +251,7 @@ function Deposits() {
             ) : null}
           </div>
           <input
+            ref={amountInputRef}
             id="depositAmount"
             name="amount"
             type="number"
@@ -264,6 +275,7 @@ function Deposits() {
             ) : null}
           </div>
           <input
+            ref={despositDateInputRef}
             id="depositDate"
             name="depositDate"
             type="date"
