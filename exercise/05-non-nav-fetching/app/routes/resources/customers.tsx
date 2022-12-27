@@ -1,26 +1,40 @@
+import type { LoaderArgs } from "@remix-run/server-runtime";
+import { json } from "@remix-run/server-runtime";
 import clsx from "clsx";
 import { useCombobox } from "downshift";
 import { useId, useState } from "react";
 import { LabelText } from "~/components";
+import { requireUser } from "~/session.server";
+import { searchCustomers } from "~/models/customer.server";
+import { useFetcher } from "@remix-run/react";
+import invariant from "tiny-invariant";
 
-export async function loader() {
+export async function loader({ request }: LoaderArgs) {
   // 🐨 verify the user is logged in with requireUser
-
+  await requireUser(request);
   // 🐨 perform the customer search with searchCustomers and the query from the request
   // and send back a json response
-
-  // 💣 and... delete this
-  throw new Error("Not implemented");
+  const query = new URL(request.url).searchParams.get("query");
+  invariant(query, "query is required");
+  const customers = await searchCustomers(query); 
+  return json({ customers });
 }
 
+/**
+ * this component is put into this file so that the related logic can be put together
+ * that's why you should pass `action: '/resources/customers'` to `submit`
+ * `fetcher.submit` actually send a request that hit to this route
+ * (Everything export under the resource folder should be an API endpoint)
+ */
 type Customer = { id: string; name: string; email: string };
 
 export function CustomerCombobox({ error }: { error?: string | null }) {
   // 🐨 use the useFetcher hook to fetch the customers
+  const customFetcher = useFetcher<{ customers: Customer[] }>();
   const id = useId();
 
   // 🐨 set this to the customer data you get from the fetcher (if it exists)
-  const customers: Array<Customer> = [];
+  const customers = customFetcher?.data?.customers ?? [];
   const [selectedCustomer, setSelectedCustomer] = useState<
     Customer | null | undefined
   >(null);
@@ -33,6 +47,13 @@ export function CustomerCombobox({ error }: { error?: string | null }) {
     items: customers,
     itemToString: (item) => (item ? item.name : ""),
     onInputValueChange: (changes) => {
+      if (!changes.inputValue) return;
+      customFetcher.submit(
+        {
+          query: changes.inputValue,
+        },
+        { method: "get", action: "/resources/customers" },
+      );
       // 🐨 use your fetcher to submit the query and get back the customers
       // 💰 changes.inputValue is the query
       // 💰 what method do we need to set this to so it ends up in the loader?

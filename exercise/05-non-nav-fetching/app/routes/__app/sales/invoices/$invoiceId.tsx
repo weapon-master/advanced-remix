@@ -16,6 +16,7 @@ import { currencyFormatter, parseDate } from "~/utils";
 import { createDeposit } from "~/models/deposit.server";
 import invariant from "tiny-invariant";
 import { useEffect, useRef } from "react";
+import { CustomerCombobox } from "~/routes/resources/customers";
 
 export async function loader({ request, params }: LoaderArgs) {
   await requireUser(request);
@@ -276,6 +277,7 @@ function Deposits() {
               errors?.depositDate ? "depositDate-error" : undefined
             }
           />
+          <CustomerCombobox error={errors?.customer} />
         </div>
         <div className="grid grid-cols-1 gap-4 lg:col-span-2 lg:flex">
           <div className="flex-1">
