@@ -1,9 +1,11 @@
-import { NavLink, Outlet, useLoaderData } from "@remix-run/react";
+import { NavLink, Outlet, useLoaderData, useTransition } from "@remix-run/react";
 import type { LoaderArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { FilePlusIcon } from "~/components";
 import { requireUser } from "~/session.server";
 import { getCustomerListItems } from "~/models/customer.server";
+import { useSpinDelay } from "spin-delay";
+import type { Customer } from "@prisma/client";
 
 export async function loader({ request }: LoaderArgs) {
   await requireUser(request);
@@ -14,10 +16,11 @@ export async function loader({ request }: LoaderArgs) {
 
 export default function Customers() {
   const { customers } = useLoaderData<typeof loader>();
-
+  const transition = useTransition();
   // 🐨 get the transition from useTransition
   // 💰 use transition.location?.state to get the customer we're transitioning to
-
+  const spinning = useSpinDelay(transition.state !== 'idle');
+  const customerTransitTo = (transition.location?.state as { customer?: Customer })?.customer;
   // 💯 to avoid a flash of loading state, you can use useSpinDelay
   // from spin-delay to determine whether to show the skeleton
 
@@ -43,7 +46,7 @@ export default function Customers() {
               key={customer.id}
               to={customer.id}
               // 🐨 add state to set the customer for the transition
-              // 💰 state={{ customer }}
+              state={{ customer }}
               prefetch="intent"
               className={({ isActive }) =>
                 "block border-b border-gray-50 py-3 px-4 hover:bg-gray-50" +
@@ -67,7 +70,9 @@ export default function Customers() {
           <CustomerSkeleton /> (defined below) instead of
           the <Outlet />
         */}
-        <Outlet />
+        { spinning ? <CustomerSkeleton
+          name={customerTransitTo?.name ?? ''}
+          email={customerTransitTo?.email ?? ''} /> : <Outlet /> }
         <small className="p-2 text-center">
           Note: this is arbitrarily slow to demonstrate pending UI.
         </small>
